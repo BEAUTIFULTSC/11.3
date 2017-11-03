@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<style>
+		*{
+			margin: 0;
+			padding: 0;
+		}
+		#map{
+			width: 800px;
+			height: 600px;
+			background-color: #ccc;
+			position: relative;
+		}
+		#map div {
+			position: absolute;
+		}
+	</style>
+</head>
+<body>
+	<div id="map"></div>
+	<script>
+		//食物
+		(function(window,document){
+			//构造函数
+			function Food(options){
+				//这里是利用对象传入食物的基本样式，宽 高 颜色 以及地图
+				this.width = options.width || 20;
+				this.height = options.height || 20;
+				this.bgColor = options.bgColor || "green";
+				this.map = options.map;
+				//设置食物所占的格数，这里是声明作用，并不是固定值
+				this.x = 0;
+				this.y = 0;
+				//设置一个属性，存放食物
+				this.element = null;
+
+			}
+			//创建食物在地图上实现
+			Food.prototype.init = function(){
+				//在创建新的食物前，删除前一个食物
+				if(this.element){
+					this.map.removeChild(this.element);
+				}
+				//创建一个div食物
+				var div = document.createElement("div");
+				//将这个div保存在构造函数的属性上，方便删除等操作
+				this.element = div;
+				//给这个div添加食物样式：宽 高 颜色 
+				div.style.width = this.width + "px";
+				div.style.height = this.height + "px";
+				div.style.backgroundColor = this.bgColor;
+				//给这个食物添加定位
+				// div.style.position = "absolute";
+				//将这个食物放入地图中
+				this.map.appendChild(div);
+				//因为坐标定位是和食物要同时执行的，所以
+				this.locateFood();
+			}
+			//让食物在地图上随机的定位
+			Food.prototype.locateFood = function(){
+				//设置食物出现的随机格数
+				this.x = Math.floor(Math.random()*(this.map.offsetWidth/this.width));
+				this.y = Math.floor(Math.random()*(this.map.offsetHeight/this.height));
+				//将这个格数乘以食物的宽高，得出具体的left和top值，
+				this.element.style.left = this.x*this.width+"px";
+				this.element.style.top = this.y*this.height+"px";
+			}
+			// //获取到元素
+			// var map = document.getElementById("map");
+			// //new 一个实例对象
+			// var f1 = new Food({
+			// 	map:map
+			// })
+			// //调用对象的方法
+			// f1.init();
+
+
+			// //将这个构造函数对象暴露给全局进行访问
+			window.Food = Food;
+
+		})(window,document);
+		
+		// f1.init();
+		// f1.locateFood();
+
+		//小蛇
+		(function(window,document){
+			function Snake(options){
+				//设置蛇的宽高 
+				this.width = options.width || 20;
+				this.height = options.height || 20;
+				//设置放置位置
+				this.map = options.map;
+				//设置蛇的颜色 位置 
+				this.body = [
+					{x:3,y:1,color:"red"}, //蛇头
+					{x:2,y:1,color:"orange"}, //蛇身
+					{x:1,y:1,color:"orange"}
+				];
+				//用于保存创建出的小蛇
+				this.element = [];
+				//设置运动方向
+				this.direction = options.direction || "right";
+			}
+			//在地图上画出小蛇
+			Snake.prototype.init = function(){
+				for(var i=0;i<this.element.length;i++){
+					//删除组成小蛇的div
+					this.map.removeChild(this.element[i]);
+				}
+				// 将旧蛇的架构删除，防止报错
+				this.element = [];
+				var div,body;
+				for(var i=0;i<this.body.length;i++){
+					var div = document.createElement("div");
+					
+					div.style.width = this.width + "px";
+					div.style.height = this.height + "px";
+					body = this.body[i];
+					div.style.backgroundColor = body.color;
+					div.style.left = body.x * this.width + "px";
+					div.style.top = body.y * this.height + "px";
+					this.map.appendChild(div);
+					this.element.push(div);
+				}
+			}
+			//设置蛇运动
+			Snake.prototype.move = function(){
+				var body;
+				//因为蛇身体的运动是依靠蛇头运动的，所有只需要设置每个身体部分移动到前一个的位置就可以了
+				for(var i=this.body.length-1;i>=1;i--){
+					body = this.body[i];
+					body.x = this.body[i-1].x;
+					body.y = this.body[i-1].y;
+				}
+				//this.body[0].x++;
+				//判断运动方向的不同，蛇头的移动方式不同
+				switch(this.direction){
+					case "left":
+						this.body[0].x--;
+						break;
+					case "up":
+						this.body[0].y--;
+						break;
+					case "right":
+						this.body[0].x++;
+						break;
+					case "down":
+						this.body[0].y++;
+				}
+				// this.body[0].y++;
+				//这里是将新蛇画在地图 上，所以直接调用上面的方法就可以
+				// this.init();	
+			}
+			// //获取地图元素
+			// var map = document.getElementById("map");
+			// var s1 = new Snake({
+			// 	map:map
+			// });
+			// s1.init();
+			// s1.init();
+			// s1.move();
+			// s1.move();
+
+			//将小蛇对象暴露给全局
+			window.Snake = Snake;
+
+		})(window,document);
+
+		//将小蛇和食物结合一起运动
+		(function(window,document){
+			var that;
+			function Game(options){
+				//传入一个对象，调用里面的属性
+				this.snake = options.snake;
+				this.food = options.food;
+				this.map = options.map;
+				//将this的指向保存在that变量中
+				that = this;
+			}
+			//初始化：蛇 食物 地图 
+			Game.prototype.init = function(){
+				//调用小蛇的init方法
+				this.snake.init();
+				//调用食物的init方法
+				this.food.init();
+				//设置小蛇跑动
+				this.snakeRun();
+				//设置键盘操作
+				this.changeDirection();
+			}
+			//设置小蛇跑动
+			Game.prototype.snakeRun = function(){
+
+				//初始化定时器
+				var timer = null;
+				//设置定时器
+				timer = setInterval(function(){
+					var body = that.snake.body[that.snake.body.length-1];
+					//获取移动之前的蛇尾的横纵坐标
+					var lasX = body.x;
+					var lasY = body.y;
+					//调用小蛇的move方法，让它结合定时器运动起来
+					that.snake.move();
+					if(that.snake.body[0].x == that.food.x && that.snake.body[0].y == that.food.y){
+						that.snake.body.push({x:lasX,y:lasY,color:"orange"});
+						//画出一个新的食物
+						that.food.init();
+					}
+					//判断蛇运动超出地图就停止运动并且提示
+					var maxX = that.map.offsetWidth/that.food.width-1;
+					var maxY = that.map.offsetHeight/that.food.height-1;
+					var x = that.snake.body[0].x;
+					var y = that.snake.body[0].y;
+					if(x<0 || x>maxX || y<0 || y>maxY){
+						clearInterval(timer);
+						alert("游戏结束");
+						return;
+					}
+					//判断撞到自己
+					for(var i=4;i<that.snake.element.length;i++){
+						if(x == that.snake.body[i].x && y == that.snake.body[i].y ){
+							clearInterval(timer);
+							alert("撞到自己了");
+							return;
+						}
+					}
+					//游戏结束后，放在这里不会再画出小蛇，放在Snake对象中，会因为页面加载再画出一个移动的蛇，
+					that.snake.init();
+				},150)
+			}
+			//设置键盘操作
+			Game.prototype.changeDirection = function(){
+				//因为键盘事件是针对整个页面操作的，所以事件对document设置
+				document.onkeydown = function(e){
+					//兼容事件对象
+					var e = e || window.event;
+					//利用e.keyCode属性，判断不同数值，不同的运动方向
+					switch(true){
+						case e.keyCode == 37 && that.snake.direction != "right":
+							that.snake.direction = "left";
+							break;
+						case e.keyCode == 38 && that.snake.direction != "down":
+							that.snake.direction = "up";
+							break;
+						case e.keyCode == 39 && that.snake.direction != "left":
+							that.snake.direction = "right";
+							break;
+						case e.keyCode == 40 && that.snake.direction != "up":
+							that.snake.direction = "down";
+							break;	
+					}
+				}
+			}
+			window.Game = Game;
+		})(window,document);
+			//获取元素
+			var map = document.getElementById("map");
+			//创建实例对象
+			var game = new Game({
+				map:map,
+				snake:new Snake({map:map}),
+				food:new Food({map:map})
+			})
+			//调用方法
+			game.init();
+	</script>
+</body>
+</html>
